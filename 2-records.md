@@ -139,17 +139,132 @@ You can project, or index, into a tuple using a natural number.
 
 move over, natural number indexing, let's use labels
 
-$$ foo = \\{ name : String, age : Int \\} $$
+$$type\ \ foo = \\{ name : String, age : Int \\} $$
+<!-- .element: class="fragment" -->
 
-$$ bar = \\{ age : Int, name : String \\} $$
+$$type\ \ bar = \\{ age : Int, name : String \\} $$
+<!-- .element: class="fragment" -->
 
 $$foo_{name} : String$$
+<!-- .element: class="fragment" -->
 
 $$foo_{age} : Int$$
+<!-- .element: class="fragment" -->
 
 Note:
 
-A record is a tuple, but instead of using positional indexing, we use string labels.
+A record is a tuple, but instead of using positional indexing, we use labels.
 This has some interesting consequences.
 Records do not have a notion of "ordering" -- one label isn't "before" another.
-The record types foo and bar here are the same type.
+The record types foo and bar here are therefore the same type.
+
+
+# neat record tricks
+
+Note:
+
+That's not all.
+There's some neat features we would naturally want out of records!
+
+
+# record subtyping
+
+```java
+// java
+class Bar {
+    public String name;    
+}
+
+class Foo extends Bar {
+    public int age;
+}
+
+public void printName(Bar bar) {
+    System.out.println(bar.name);    
+}
+```
+
+Note:
+
+So, one thing we often want to do is express is record subtyping.
+If a record has all the same fields as another record, and a few extra, then we should be able to use it in place of the record.
+Foo here has a name and an age, while Bar has just a name.
+If a function accepts a Bar as input, then we'd want it to also accept a Foo, or anything else that was at least as large.
+
+
+```java
+interface HasName {
+    public String getName();
+}
+
+class Foo implements HasName {
+    public String name;
+    public getName() { return this.name };
+}
+```
+
+Note:
+
+Java doesn't really have this, because you have to either make an explicit subclass or define an interface, and then explicitly implement it.
+Java has what is known as "nominal subtyping," where you must explicitly declare that one type is a subtype of another.
+Furthermore, subclassing and subtyping are actually totally different -- a superclass is a subtype.
+OO type systems are weird and hard.
+OCaml has structural subtyping, where you can express that sort of thing.
+
+
+# row polymorphism
+
+```haskell
+type Foo = { name :: String, age :: Int }
+type Bar = { name :: String }
+
+asdf 
+  :: forall fields. { name :: String | fields } 
+  -> IO Unit
+asdf r = print r.name
+```
+
+Note:
+
+Row polymorphism is similar to subtyping, but it requires explicit polymorphism rather than implicit subtyping rules.
+This allows us to say that we can write a function `asdf` that accepts *any* record that has *at least* a `name` field with type String.
+Subtyping tends to make type systems get really weird and complex, so the ability to work polymorphically over records like this without subtyping is a huge win.
+
+
+# adding/dropping fields
+
+```javascript
+function extendRecord(obj, field, value) {
+    obj[field] = value;    
+}
+
+function noMoreName(obj) {
+    delete obj.name;
+}
+```
+
+lol nevermind that
+<!-- .element: class="fragment" -->
+
+Note:
+
+We'd also like to be able to potentially add and drop fields to records.
+If we're making the comparison to tuples, vectors, dictionaries, and hashes, then I'd expect that we can do similar things.
+PureScript lets us do this quite nicely:
+
+
+# +/- Fields
+
+```haskell
+-- PureScript is awesome
+foo :: forall fields
+     . { | fields }               -- input record
+    -> { tag :: String | fields } -- output record
+foo = insert (SProxy :: SProxy "tag") "Hello!"
+```
+
+Note:
+
+PureScript actually implements this as a library, so it's not super baked in.
+Elm also had this feature, but then dropped it for some reason.
+We can easily do this in dynamic languages like JavaScript and Ruby, but we want better for our records in typed languages.
