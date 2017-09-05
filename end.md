@@ -2,7 +2,7 @@ _fin_
 
 - blogging http://www.parsonsmatt.org
 - garbage tweeting [@mattoflambda](https://twitter.com/mattoflambda)
-- slides http://www.parsonsmatt.org/command-pattern
+- slides http://www.parsonsmatt.org/overcoming-records
 
 Note:
 

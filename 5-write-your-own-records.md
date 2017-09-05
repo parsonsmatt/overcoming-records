@@ -530,3 +530,69 @@ Converting to and from JSON is a pretty reasonable thing to want from these exte
 Let's write those instances now.
 We'll delegate to a helper class, again.
 We know we'll need to be able to convert each element in the record.
+Aeson has a type `Pair`, which is the pairing of "anything that can be a JSON object key and anything that can be a JSON object."
+We define a class ToPairs that we'll walk inductively over the record.
+The empty hash record is equal to an empty list of pairs.
+This marks our base case.
+The inductive step requires that we can convert the rest of the record into pairs, that we have a KnownSymbol and Typeable constraint on the key and value, and that the value can be converted to JSON.
+
+This is going to be a common pattern, and it kinda makes sense: Haskell functions must operate uniformly on a given type.
+So if we want behavior of the function to vary with the type, then we need to use a type class.
+
+
+parse from json pls
+
+```haskell
+instance FromJSON (HashRecord' f '[]) where
+  parseJSON = withObject "HashRecord'" $ \_ -> 
+    pure (HashRecord mempty)
+```
+
+<pre class="fragment"><code class="lang-haskell hljs" data-trim data-noescape>
+instance
+  ( <span class="fragment">KnownSymbol k, Typeable v, FromJSON v</span>
+  , <span class="fragment">FromJSON (HashRecord xs)</span>
+  ) => FromJSON (HashRecord (k =: v ': xs)) where
+  parseJSON = withObject "HashRecord'" $ \o -> do
+    <span class="fragment">let key = symbolVal (Proxy @k)
+    val <- o .: Text.pack key
+    rest <- parseJSON (Object o)
+    <span class="fragment">let HashRecord rest' = rest :: HashRecord xs
+        _ = val :: v
+    pure (HashRecord (Map.insert key (toDyn val) rest'))</span></span>
+</code></pre>
+
+Note:
+
+We also want a way to dig these guys out of a JSON representation.
+Fortunately, implementing FromJSON is fairly straightforward, once we have our "inductive type class" hats on.
+We start with the base case: the empty hashrecord.
+We require that we're parsing a JSON object, but otherwise, we don't care -- we ignore the Object and just return the empty hashrecord.
+
+The base case is a little trickier. (next)
+We need these constraints to make this step of the recursion work: the value and symbol need typeable, fromJSON, etc. (next)
+We need this constraint to ensure that the induction step works. (next)
+We must parse an object, and this time we actually care about the object we're parsing.
+So we grab the symbol value, pack it into a Text, and use that to parse that field out of the JSON object.
+To parse the rest of the hashmap, we recurse into parseJSON and repackage the JSON objec. (next)
+We need to provide type annotations so GHC knows what instances we're looking for.
+Finally, once we have the value and the rest of the hashmap, we insert the value into the hashmap.
+We're done with JSON parsing!
+
+
+<!-- .slide: data-background="ytho.jpg" -->
+
+Note:
+
+So, when is this actually a good idea?
+Admittedly, fairly rarely.
+The error messages and compile-time performance of this stuff is pretty bad.
+I *had* a use case for this sort of thing: I'd define an extensible record for an API endpoint, and then I could say "A subset of this record can be used for PATCH" updates, where each of the fields was augmented with Maybe.
+That was cool.
+However, it ended up being fairly hard to use, and the code for workign with it is fairly advanced.
+For that use case, vim macros and defining the data type manually worked awesome.
+TemplateHaskell to autogenerate the data types might work even better, if I had a thousand of these guys to support.
+
+One use case that I'd like to explore with this is a relational database library.
+I believe that row polymorphism is most powerful when expressing the results of SQL queries -- it's easy to represent a left join of two tables when they're defined as rows.
+I'm pretty sure that writing a database library is a great way to invite untold pain and suffering into your life, though.
