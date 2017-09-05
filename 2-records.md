@@ -123,10 +123,10 @@ What is a record?
 
 generalized tuples
 
-$$foo\ =\ (a : Int, b : Char, c, d)$$
+$$foo\ =\ (Int, Char, Double)$$
 
-$$foo_1 = a : Int$$
-$$foo_2 = b : Char$$
+$$foo_1 : Int$$
+$$foo_2 : Char$$
 
 Note:
 
